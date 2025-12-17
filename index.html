@@ -1,20 +1,24 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Merry Christmas</title>
 
+<!-- 草寫字體 -->
 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 
 <style>
 html, body {
   margin: 0;
   padding: 0;
+  background: radial-gradient(circle at top, #0b1d3a, #020611);
   overflow: hidden;
-  background: linear-gradient(#07192f, #0e2a47);
+  font-family: "Great Vibes", cursive;
 }
-canvas { display:block; }
+canvas {
+  display: block;
+}
 </style>
 </head>
 
@@ -24,32 +28,48 @@ canvas { display:block; }
 <script>
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
-
 function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 resize();
-addEventListener("resize", resize);
+window.addEventListener("resize", resize);
 
-// ❄ 雪
-const snow = Array.from({length:120},()=>({
-  x:Math.random()*canvas.width,
-  y:Math.random()*canvas.height,
-  r:Math.random()*2+1,
-  s:Math.random()*0.6+0.4
+/* ========= 狀態控制 ========= */
+let stage = 0;
+/*
+0 = 等待點禮物
+1 = 金光爆發
+2 = 兔子出現
+3 = 煙火
+4 = 點擊顯示文字
+*/
+
+let lastStageTime = 0;
+
+/* ========= 雪 ========= */
+const snow = Array.from({length: 160}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 1.5 + 0.5,
+  v: Math.random() * 0.5 + 0.2
 }));
 
-let opened=false;
-let showFireworks=false;
-let secondClick=false;
+/* ========= 禮物 ========= */
+let giftAlpha = 1;
 
-// ✨ 粒子
-const sparkles=[];
-const fireworks=[];
+/* ========= 金光 ========= */
+let glowParticles = [];
 
-// ✍️ 祝福文字（照你給的排版）
-const lines = [
+/* ========= 兔子 ========= */
+let bunnyAlpha = 0;
+let hearts = [];
+
+/* ========= 煙火 ========= */
+let fireworks = [];
+
+/* ========= 文字 ========= */
+const messageLines = [
   "九千：",
   "這是我和妳一起過的",
   "第一個聖誕節，",
@@ -58,133 +78,226 @@ const lines = [
   "未來能給彼此更多",
   "有趣的驚喜♡",
   "",
-  "to.羊羊（2025/12/25）"
+  "to. 羊羊（2025/12/25）"
 ];
-
-let lineIndex = 0;
+let typedIndex = 0;
 let charIndex = 0;
-let showMessage = false;
-let textTimer = 0;
+let typing = false;
 
-// 點擊
-canvas.onclick = () => {
-  if (!opened) {
-    opened = true;
-    showFireworks = true;
-    return;
+/* ========= 點擊 ========= */
+canvas.addEventListener("click", () => {
+  if(stage === 0){
+    stage = 1;
+    lastStageTime = performance.now();
+    explodeGlow();
+  } else if(stage === 3){
+    stage = 4;
+    typing = true;
   }
-  if (showFireworks && !secondClick) {
-    secondClick = true;
-    showMessage = true;
-  }
-};
+});
 
-// ❄ 雪
+/* ========= 功能 ========= */
+
+function explodeGlow(){
+  glowParticles = Array.from({length: 180}, () => ({
+    x: canvas.width/2,
+    y: canvas.height/2,
+    vx: (Math.random()-0.5)*18,
+    vy: (Math.random()-0.5)*18,
+    life: 60
+  }));
+}
+
+function spawnHeart(){
+  hearts.push({
+    x: canvas.width/2,
+    y: canvas.height/2 - 180,
+    vy: Math.random()*0.5 + 0.3,
+    alpha: 1
+  });
+}
+
+function spawnFirework(){
+  fireworks.push({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height*0.6 + 50,
+    parts: Array.from({length: 40}, () => ({
+      vx: (Math.random()-0.5)*6,
+      vy: (Math.random()-0.5)*6,
+      life: 50,
+      hue: Math.random()*360
+    }))
+  });
+}
+
+/* ========= 畫 ========= */
+
 function drawSnow(){
-  ctx.fillStyle="#fff";
+  ctx.fillStyle = "#fff";
   snow.forEach(s=>{
-    s.y+=s.s;
-    if(s.y>canvas.height) s.y=-10;
+    s.y += s.v;
+    if(s.y > canvas.height) s.y = -5;
     ctx.beginPath();
-    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
     ctx.fill();
   });
 }
 
-// 🎆 煙火
-function spawnFirework(){
-  const x=Math.random()*canvas.width;
-  const y=Math.random()*canvas.height*0.6;
-  const colors=["#ffd700","#ff6ec7","#7afcff","#b388ff","#fff176"];
-  for(let i=0;i<90;i++){
-    fireworks.push({
-      x,y,
-      vx:Math.cos(Math.random()*Math.PI*2)*(2+Math.random()*4),
-      vy:Math.sin(Math.random()*Math.PI*2)*(2+Math.random()*4),
-      life:80,
-      color:colors[Math.floor(Math.random()*colors.length)]
-    });
-  }
+function drawGift(){
+  if(giftAlpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = giftAlpha;
+  ctx.translate(canvas.width/2, canvas.height/2);
+  ctx.fillStyle = "#c62828";
+  ctx.fillRect(-160, -120, 320, 240);
+  ctx.fillStyle = "#ffd54f";
+  ctx.fillRect(-20, -120, 40, 240);
+  ctx.fillRect(-160, -20, 320, 40);
+  ctx.restore();
+}
+
+function drawGlow(){
+  glowParticles.forEach(p=>{
+    ctx.fillStyle = `rgba(255,215,120,${p.life/60})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
+    ctx.fill();
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+  });
+  glowParticles = glowParticles.filter(p=>p.life>0);
+}
+
+function drawBunny(){
+  if(bunnyAlpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = bunnyAlpha;
+  const x = canvas.width/2;
+  const y = canvas.height/2 + 80;
+
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(x, y, 140, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.ellipse(x-60, y-200, 40, 100, 0, 0, Math.PI*2);
+  ctx.ellipse(x+60, y-200, 40, 100, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffb6c1";
+  ctx.beginPath();
+  ctx.arc(x-30, y-10, 8, 0, Math.PI*2);
+  ctx.arc(x+30, y-10, 8, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawHearts(){
+  hearts.forEach(h=>{
+    ctx.fillStyle = `rgba(255,150,180,${h.alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y);
+    ctx.arc(h.x-6, h.y, 6, 0, Math.PI);
+    ctx.arc(h.x+6, h.y, 6, 0, Math.PI);
+    ctx.lineTo(h.x, h.y+12);
+    ctx.fill();
+    h.y -= h.vy;
+    h.alpha -= 0.01;
+  });
+  hearts = hearts.filter(h=>h.alpha>0);
 }
 
 function drawFireworks(){
-  if(!showFireworks) return;
-  if(Math.random()<0.08) spawnFirework();
-
   fireworks.forEach(f=>{
-    f.x+=f.vx;
-    f.y+=f.vy;
-    f.life--;
-    ctx.globalAlpha=f.life/80;
-    ctx.fillStyle=f.color;
-    ctx.beginPath();
-    ctx.arc(f.x,f.y,3,0,Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha=1;
+    f.parts.forEach(p=>{
+      ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life/50})`;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 3, 0, Math.PI*2);
+      ctx.fill();
+      f.x += p.vx;
+      f.y += p.vy;
+      p.life--;
+    });
   });
-
-  for(let i=fireworks.length-1;i>=0;i--){
-    if(fireworks[i].life<=0) fireworks.splice(i,1);
-  }
+  fireworks = fireworks.filter(f=>f.parts.some(p=>p.life>0));
 }
 
-// ✨ 標題
 function drawTitle(){
-  ctx.font="96px 'Great Vibes'";
-  ctx.textAlign="center";
-  ctx.fillStyle="rgba(255,215,160,0.95)";
-  ctx.shadowColor="rgba(255,215,160,0.9)";
-  ctx.shadowBlur=18;
-  ctx.fillText("Merry Christmas",canvas.width/2,140);
-  ctx.shadowBlur=0;
+  ctx.fillStyle = "#f7d27c";
+  ctx.shadowColor = "#ffd700";
+  ctx.shadowBlur = 25;
+  ctx.font = "80px Great Vibes";
+  ctx.textAlign = "center";
+  ctx.fillText("Merry Christmas", canvas.width/2, 120);
+  ctx.shadowBlur = 0;
 }
 
-// ✍️ 中央祝福文字（逐行寫出）
 function drawMessage(){
-  if(!showMessage) return;
-
-  textTimer++;
-  if(textTimer % 4 === 0){
-    if (lineIndex < lines.length) {
-      charIndex++;
-      if (charIndex > lines[lineIndex].length) {
-        lineIndex++;
-        charIndex = 0;
-      }
-    }
+  ctx.fillStyle = "#f7d27c";
+  ctx.font = "64px Great Vibes";
+  ctx.textAlign = "center";
+  let y = canvas.height/2 - 160;
+  for(let i=0;i<=typedIndex;i++){
+    const text = messageLines[i] || "";
+    ctx.fillText(text.substring(0, i===typedIndex?charIndex:text.length), canvas.width/2, y);
+    y += 70;
   }
-
-  ctx.textAlign="center";
-  ctx.font="48px serif";
-  ctx.fillStyle="rgba(255,215,160,0.95)";
-  ctx.shadowColor="rgba(255,215,160,0.85)";
-  ctx.shadowBlur=12;
-
-  const startY = canvas.height/2 - 180;
-  const lineHeight = 60;
-
-  for (let i = 0; i < lineIndex; i++) {
-    ctx.fillText(lines[i], canvas.width/2, startY + i * lineHeight);
-  }
-
-  if (lineIndex < lines.length) {
-    ctx.fillText(
-      lines[lineIndex].slice(0, charIndex),
-      canvas.width/2,
-      startY + lineIndex * lineHeight
-    );
-  }
-
-  ctx.shadowBlur=0;
 }
 
-// 主迴圈
+/* ========= 主循環 ========= */
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawSnow();
-  drawFireworks();
-  drawTitle();
-  drawMessage();
+
+  const now = performance.now();
+
+  if(stage === 0){
+    drawGift();
+  }
+
+  if(stage === 1){
+    giftAlpha -= 0.02;
+    drawGift();
+    drawGlow();
+    if(now - lastStageTime > 1200){
+      stage = 2;
+      lastStageTime = now;
+    }
+  }
+
+  if(stage === 2){
+    bunnyAlpha = Math.min(1, bunnyAlpha + 0.02);
+    drawBunny();
+    if(Math.random()<0.05) spawnHeart();
+    drawHearts();
+    if(now - lastStageTime > 2200){
+      stage = 3;
+      bunnyAlpha = 0;
+    }
+  }
+
+  if(stage >= 3){
+    if(Math.random()<0.04) spawnFirework();
+    drawFireworks();
+    drawTitle();
+  }
+
+  if(stage === 4 && typing){
+    if(charIndex < messageLines[typedIndex].length){
+      charIndex++;
+    } else {
+      typedIndex++;
+      charIndex = 0;
+      if(typedIndex >= messageLines.length){
+        typing = false;
+      }
+    }
+    drawMessage();
+  }
+
   requestAnimationFrame(loop);
 }
 loop();
