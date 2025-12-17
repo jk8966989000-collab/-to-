@@ -1,143 +1,137 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Merry Christmas</title>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(#0b1d3a, #000814);
-    overflow: hidden;
-    touch-action: manipulation;
-    font-family: "Comic Sans MS", "Arial Rounded MT Bold", sans-serif;
-  }
-  canvas {
-    display: block;
-  }
+html, body {
+  margin: 0;
+  background: linear-gradient(#0b1d3a, #020617);
+  overflow: hidden;
+  font-family: "Arial Rounded MT Bold", sans-serif;
+}
+canvas { display:block; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
 <script>
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-resize();
-window.addEventListener("resize", resize);
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+function resize(){ c.width=innerWidth; c.height=innerHeight;}
+resize(); addEventListener("resize",resize);
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-
-// ❄️ 雪花
-const snowflakes = Array.from({ length: 120 }, () => ({
-  x: Math.random() * canvas.width,
-  y: Math.random() * canvas.height,
-  r: Math.random() * 3 + 1,
-  s: Math.random() * 1 + 0.5
+// ❄️ 雪
+const snow = Array.from({length:120},()=>({
+  x:Math.random()*c.width,
+  y:Math.random()*c.height,
+  r:Math.random()*3+1,
+  s:Math.random()*1+0.5
 }));
 
-let giftOpened = false;
-let bunnyY = canvas.height;
-let showText = false;
+let opened=false;
+let bunnyY=c.height+100;
 
-canvas.addEventListener("click", () => {
-  giftOpened = true;
-  showText = true;
-});
+// 點擊
+c.onclick=()=> opened=true;
 
-// 🎁 禮物盒
-function drawGift() {
-  const x = canvas.width / 2;
-  const y = canvas.height / 2 + 60;
-
+// 🌲 聖誕樹
+function tree(x,y,scale){
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(Math.sin(Date.now() / 400) * 0.05);
-
-  // box
-  ctx.fillStyle = "#e63946";
-  ctx.fillRect(-60, -40, 120, 80);
-
-  // ribbon
-  ctx.fillStyle = "#ffd166";
-  ctx.fillRect(-10, -40, 20, 80);
-  ctx.fillRect(-60, -10, 120, 20);
-
-  // lid
-  ctx.fillStyle = giftOpened ? "#c1121f" : "#ef233c";
-  ctx.fillRect(-70, -60, 140, 30);
-
+  ctx.translate(x,y);
+  ctx.scale(scale,scale);
+  ctx.fillStyle="#2a9d8f";
+  ctx.beginPath();
+  ctx.moveTo(0,-80); ctx.lineTo(-40,0); ctx.lineTo(40,0);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(0,-120); ctx.lineTo(-30,-40); ctx.lineTo(30,-40);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#8d5524";
+  ctx.fillRect(-6,0,12,20);
   ctx.restore();
 }
 
-// 🐰 圓圓兔子
-function drawBunny() {
-  if (!giftOpened) return;
+// 🎁 禮物盒
+function gift(){
+  if(opened) return;
+  const x=c.width/2, y=c.height/2+60;
+  ctx.fillStyle="#e63946";
+  ctx.fillRect(x-60,y-40,120,80);
+  ctx.fillStyle="#ffd166";
+  ctx.fillRect(x-10,y-40,20,80);
+  ctx.fillRect(x-60,y-10,120,20);
+}
 
-  bunnyY += (canvas.height / 2 - 40 - bunnyY) * 0.05;
+// 🐰 乖乖圓兔
+function bunny(){
+  if(!opened) return;
+  bunnyY += (c.height/2+30 - bunnyY)*0.06;
+  const x=c.width/2, y=bunnyY;
 
-  const x = canvas.width / 2;
-  const y = bunnyY;
+  // 身體
+  ctx.fillStyle="#fff7e6";
+  ctx.beginPath(); ctx.arc(x,y,50,0,Math.PI*2); ctx.fill();
 
-  // body
-  ctx.fillStyle = "#fff";
+  // 耳朵
   ctx.beginPath();
-  ctx.arc(x, y, 40, 0, Math.PI * 2);
+  ctx.ellipse(x-20,y-70,14,30,0,0,Math.PI*2);
+  ctx.ellipse(x+20,y-70,14,30,0,0,Math.PI*2);
   ctx.fill();
 
-  // ears
+  // 臉
+  ctx.fillStyle="#333";
   ctx.beginPath();
-  ctx.ellipse(x - 20, y - 60, 12, 30, 0, 0, Math.PI * 2);
-  ctx.ellipse(x + 20, y - 60, 12, 30, 0, 0, Math.PI * 2);
+  ctx.arc(x-10,y-5,3,0,Math.PI*2);
+  ctx.arc(x+10,y-5,3,0,Math.PI*2);
   ctx.fill();
 
-  // face
-  ctx.fillStyle = "#333";
+  ctx.fillStyle="#f4a6b8";
   ctx.beginPath();
-  ctx.arc(x - 10, y - 5, 4, 0, Math.PI * 2);
-  ctx.arc(x + 10, y - 5, 4, 0, Math.PI * 2);
+  ctx.arc(x,y+8,4,0,Math.PI*2);
   ctx.fill();
 
-  ctx.fillStyle = "#ffb5c2";
+  // 腮紅
+  ctx.fillStyle="rgba(255,180,200,0.6)";
   ctx.beginPath();
-  ctx.arc(x, y + 8, 5, 0, Math.PI * 2);
+  ctx.arc(x-18,y+5,6,0,Math.PI*2);
+  ctx.arc(x+18,y+5,6,0,Math.PI*2);
   ctx.fill();
 }
 
-// ✨ 金色文字
-function drawText() {
-  if (!showText) return;
-  ctx.fillStyle = "#ffd700";
-  ctx.font = "bold 42px Arial Rounded MT Bold";
-  ctx.textAlign = "center";
-  ctx.fillText("MERRY CHRISTMAS", canvas.width / 2, 90);
+// ✨ 文字
+function text(){
+  if(!opened) return;
+  ctx.fillStyle="#ffd700";
+  ctx.font="bold 40px Arial Rounded MT Bold";
+  ctx.textAlign="center";
+  ctx.fillText("MERRY CHRISTMAS",c.width/2,80);
 }
 
 // ❄️ 雪動畫
-function drawSnow() {
-  ctx.fillStyle = "#fff";
-  snowflakes.forEach(f => {
-    f.y += f.s;
-    if (f.y > canvas.height) f.y = -10;
+function drawSnow(){
+  ctx.fillStyle="#fff";
+  snow.forEach(f=>{
+    f.y+=f.s;
+    if(f.y>c.height) f.y=-10;
     ctx.beginPath();
-    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+    ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
     ctx.fill();
   });
 }
 
-function loop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function loop(){
+  ctx.clearRect(0,0,c.width,c.height);
   drawSnow();
-  drawText();
-  drawGift();
-  drawBunny();
+  tree(80,c.height/2+80,1);
+  tree(c.width-80,c.height/2+80,1);
+  text();
+  gift();
+  bunny();
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 </body>
