@@ -25,21 +25,19 @@ canvas { display:block; }
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-// ✅ 等字型真的載好
-let fontReady = false;
-document.fonts.load("96px 'Great Vibes'").then(()=>{
-  fontReady = true;
-});
+// 字型載入鎖
+let fontReady=false;
+document.fonts.load("96px 'Great Vibes'").then(()=>fontReady=true);
 
 function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+  canvas.width=innerWidth;
+  canvas.height=innerHeight;
 }
 resize();
-addEventListener("resize", resize);
+addEventListener("resize",resize);
 
 // ❄ 雪
-const snow = Array.from({length:120},()=>({
+const snow=Array.from({length:120},()=>({
   x:Math.random()*canvas.width,
   y:Math.random()*canvas.height,
   r:Math.random()*2+1,
@@ -47,18 +45,11 @@ const snow = Array.from({length:120},()=>({
 }));
 
 // 狀態
-let opened=false;
-let showBunny=false;
-let showFireworks=false;
-let showTitle=false;
-let flash=0;
-let secondClick=false;
-
-let bunnyEndTime=0;
-let titleTime=0;
+let opened=false,showBunny=false,showFireworks=false,showTitle=false;
+let bunnyEndTime=0,titleTime=0,secondClick=false;
 
 // 粒子
-const sparkles=[], fireworks=[], hearts=[];
+const fireworks=[],hearts=[];
 
 // ✍️ 文字
 const messageLines=[
@@ -75,16 +66,13 @@ const messageLines=[
 let lineIndex=0,charIndex=0,showMessage=false,textTimer=0;
 
 // 👆 點擊提示
-let showHint=true;
-let hintPhase=0;
+let showHint=true,hintPhase=0;
 
 // 點擊
 canvas.onclick=()=>{
   if(!opened){
     opened=true;
     showHint=false;
-    flash=60;
-
     setTimeout(()=>showBunny=true,1000);
     setTimeout(()=>{
       showBunny=false;
@@ -92,7 +80,6 @@ canvas.onclick=()=>{
     },4000);
     return;
   }
-
   if(showFireworks && !secondClick){
     secondClick=true;
     showHint=false;
@@ -100,7 +87,7 @@ canvas.onclick=()=>{
   }
 };
 
-// 👆 點擊提示（遊戲風）
+// 👆 點擊提示（符號＋文字）
 function drawHint(){
   if(!showHint) return;
 
@@ -124,7 +111,13 @@ function drawHint(){
   ctx.strokeStyle="#fff";
   ctx.lineWidth=6;
 
-  // 點擊圓
+  // 提示文字
+  ctx.font="32px sans-serif";
+  ctx.textAlign="center";
+  ctx.fillStyle="rgba(255,255,255,0.85)";
+  ctx.fillText("點擊螢幕",0,-80);
+
+  // 圓圈
   ctx.beginPath();
   ctx.arc(0,0,26,0,Math.PI*2);
   ctx.stroke();
@@ -140,30 +133,15 @@ function drawHint(){
   ctx.restore();
 }
 
-// 🎁 禮物
-function drawGift(){
-  if(opened) return;
-  const s=Math.min(canvas.width,canvas.height)*0.5;
-  const x=canvas.width/2-s/2;
-  const y=canvas.height/2-s/2;
-  ctx.fillStyle="#c62828";
-  ctx.fillRect(x,y,s,s);
-  ctx.fillStyle="#ffd54f";
-  ctx.fillRect(x+s/2-18,y,36,s);
-  ctx.fillRect(x,y+s/2-18,s,36);
-}
-
 // 🐰 兔子
 function drawBunny(){
   if(!showBunny) return;
-  const x=canvas.width/2;
-  const y=canvas.height/2+80;
+  const x=canvas.width/2,y=canvas.height/2+80;
   const r=Math.min(canvas.width,canvas.height)*0.22;
 
   ctx.fillStyle="#fff";
   ctx.beginPath();
-  ctx.arc(x,y,r,0,Math.PI*2);
-  ctx.fill();
+  ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
 
   ctx.beginPath();
   ctx.ellipse(x-r/2.5,y-r*1.3,r/4,r/1.2,0,0,Math.PI*2);
@@ -177,29 +155,23 @@ function drawBunny(){
   ctx.fill();
 
   if(Math.random()<0.08){
-    hearts.push({x:x+r*0.45,y:y-r*1.4,vy:-1,life:80,scale:1});
+    hearts.push({x:x+r*0.45,y:y-r*1.4,vy:-1,life:80});
   }
 }
 
 // 💖 愛心
 function drawHearts(){
   hearts.forEach(h=>{
-    h.y+=h.vy;h.life--;h.scale+=0.003;
-    ctx.save();
-    ctx.translate(h.x,h.y);
-    ctx.scale(h.scale,h.scale);
+    h.y+=h.vy;h.life--;
     ctx.fillStyle=`rgba(255,140,170,${h.life/80})`;
     ctx.beginPath();
-    ctx.arc(-6,-2,6,0,Math.PI*2);
-    ctx.arc(6,-2,6,0,Math.PI*2);
-    ctx.lineTo(0,12);
+    ctx.arc(h.x,h.y,8,0,Math.PI*2);
     ctx.fill();
-    ctx.restore();
   });
   hearts.splice(0,hearts.filter(h=>h.life<=0).length);
 }
 
-// 🎆 煙火
+// 🎆 煙火（完全還原正常版）
 function spawnFirework(){
   const x=Math.random()*canvas.width;
   const y=Math.random()*canvas.height*0.6;
@@ -269,7 +241,7 @@ function drawSnow(){
 
 // ✨ 標題
 function drawTitle(){
-  if(!showTitle || !fontReady) return;
+  if(!showTitle||!fontReady) return;
   ctx.font="96px 'Great Vibes'";
   ctx.textAlign="center";
   ctx.fillStyle="rgba(255,215,160,0.9)";
@@ -283,7 +255,6 @@ function drawTitle(){
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawSnow();
-  drawGift();
   drawBunny();
   drawHearts();
 
