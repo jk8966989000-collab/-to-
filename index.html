@@ -25,6 +25,12 @@ canvas { display:block; }
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
+// ✅ 等字型真的載好
+let fontReady = false;
+document.fonts.load("96px 'Great Vibes'").then(()=>{
+  fontReady = true;
+});
+
 function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
@@ -48,16 +54,14 @@ let showTitle=false;
 let flash=0;
 let secondClick=false;
 
-let bunnyEndTime = 0;
-let titleTime = 0;
+let bunnyEndTime=0;
+let titleTime=0;
 
-// ✨ 粒子
-const sparkles=[];
-const fireworks=[];
-const hearts=[];
+// 粒子
+const sparkles=[], fireworks=[], hearts=[];
 
-// ✍️ 手寫文字
-const messageLines = [
+// ✍️ 文字
+const messageLines=[
   "九千：",
   "這是我和妳一起過的",
   "第一個聖誕節，",
@@ -71,78 +75,66 @@ const messageLines = [
 let lineIndex=0,charIndex=0,showMessage=false,textTimer=0;
 
 // 👆 點擊提示
-let showFinger=true;
-let fingerPhase=0;
+let showHint=true;
+let hintPhase=0;
 
 // 點擊
-canvas.onclick = () => {
-  if (!opened) {
-    opened = true;
-    showFinger = false;
-    flash = 60;
-
-    for (let i=0;i<260;i++){
-      sparkles.push({
-        x:canvas.width/2,
-        y:canvas.height/2,
-        vx:Math.cos(Math.random()*Math.PI*2)*(4+Math.random()*6),
-        vy:Math.sin(Math.random()*Math.PI*2)*(4+Math.random()*6),
-        life:60
-      });
-    }
+canvas.onclick=()=>{
+  if(!opened){
+    opened=true;
+    showHint=false;
+    flash=60;
 
     setTimeout(()=>showBunny=true,1000);
     setTimeout(()=>{
       showBunny=false;
-      bunnyEndTime = performance.now();
+      bunnyEndTime=performance.now();
     },4000);
     return;
   }
 
-  if (showFireworks && !secondClick) {
-    secondClick = true;
-    showFinger = false;
-    showMessage = true;
+  if(showFireworks && !secondClick){
+    secondClick=true;
+    showHint=false;
+    showMessage=true;
   }
 };
 
-// 👆 白色線條點擊提示（大）
-function drawFinger(){
-  if(!showFinger) return;
+// 👆 點擊提示（遊戲風）
+function drawHint(){
+  if(!showHint) return;
 
-  fingerPhase += 0.05;
-  const floatY = Math.sin(fingerPhase) * 10;
+  hintPhase+=0.04;
+  const pulse=1+Math.sin(hintPhase)*0.08;
 
-  let x, y;
-
-  if (!opened) {
-    // 禮物盒右下方
+  let x,y;
+  if(!opened){
     const s=Math.min(canvas.width,canvas.height)*0.5;
-    x = canvas.width/2 + s/2 + 60;
-    y = canvas.height/2 + s/2 + floatY;
-  } else {
-    // 第二次：畫面中央偏下
-    x = canvas.width/2;
-    y = canvas.height*0.6 + floatY;
+    x=canvas.width/2+s/2+70;
+    y=canvas.height/2+s/2;
+  }else{
+    x=canvas.width/2;
+    y=canvas.height*0.6;
   }
 
   ctx.save();
   ctx.translate(x,y);
-  ctx.globalAlpha = 0.6;
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 6;
-  ctx.lineCap = "round";
+  ctx.scale(pulse,pulse);
+  ctx.globalAlpha=0.7;
+  ctx.strokeStyle="#fff";
+  ctx.lineWidth=6;
 
-  // 手指外框（線條）
+  // 點擊圓
   ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.lineTo(0,-80);
-  ctx.lineTo(30,-110);
+  ctx.arc(0,0,26,0,Math.PI*2);
   ctx.stroke();
 
-  // 點擊圓圈
+  // 指向線
   ctx.beginPath();
-  ctx.arc(0,0,22,0,Math.PI*2);
+  ctx.moveTo(0,-40);
+  ctx.lineTo(-18,-62);
+  ctx.moveTo(0,-40);
+  ctx.lineTo(18,-62);
   ctx.stroke();
 
   ctx.restore();
@@ -184,24 +176,15 @@ function drawBunny(){
   ctx.arc(x+r/6,y-r/12,r/16,0,Math.PI*2);
   ctx.fill();
 
-  if (Math.random() < 0.08) {
-    hearts.push({
-      x:x+r*0.45,
-      y:y-r*1.4,
-      vy:-1,
-      life:80,
-      scale:1
-    });
+  if(Math.random()<0.08){
+    hearts.push({x:x+r*0.45,y:y-r*1.4,vy:-1,life:80,scale:1});
   }
 }
 
 // 💖 愛心
 function drawHearts(){
   hearts.forEach(h=>{
-    h.y+=h.vy;
-    h.life--;
-    h.scale+=0.003;
-
+    h.y+=h.vy;h.life--;h.scale+=0.003;
     ctx.save();
     ctx.translate(h.x,h.y);
     ctx.scale(h.scale,h.scale);
@@ -216,7 +199,7 @@ function drawHearts(){
   hearts.splice(0,hearts.filter(h=>h.life<=0).length);
 }
 
-// 🎆 煙火（維持正常）
+// 🎆 煙火
 function spawnFirework(){
   const x=Math.random()*canvas.width;
   const y=Math.random()*canvas.height*0.6;
@@ -236,9 +219,7 @@ function drawFireworks(){
   if(!showFireworks) return;
   if(Math.random()<0.08) spawnFirework();
   fireworks.forEach(f=>{
-    f.x+=f.vx;
-    f.y+=f.vy;
-    f.life--;
+    f.x+=f.vx;f.y+=f.vy;f.life--;
     ctx.globalAlpha=f.life/80;
     ctx.fillStyle=f.color;
     ctx.beginPath();
@@ -246,21 +227,16 @@ function drawFireworks(){
     ctx.fill();
     ctx.globalAlpha=1;
   });
-  fireworks.splice(0,fireworks.filter(f=>f.life<=0).length);
 }
 
-// ✍️ 手寫文字
+// ✍️ 文字
 function drawMessage(){
   if(!showMessage) return;
   textTimer++;
-  if(textTimer%7===0){
+  if(textTimer%8===0){
     if(lineIndex<messageLines.length){
-      if(charIndex<messageLines[lineIndex].length){
-        charIndex++;
-      }else{
-        lineIndex++;
-        charIndex=0;
-      }
+      if(charIndex<messageLines[lineIndex].length) charIndex++;
+      else{ lineIndex++; charIndex=0; }
     }
   }
 
@@ -284,31 +260,16 @@ function drawMessage(){
 function drawSnow(){
   ctx.fillStyle="#fff";
   snow.forEach(s=>{
-    s.y+=s.s;
-    if(s.y>canvas.height)s.y=-10;
+    s.y+=s.s;if(s.y>canvas.height)s.y=-10;
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
     ctx.fill();
   });
 }
 
-// ✨ 金光
-function drawFlash(){
-  if(flash<=0) return;
-  flash--;
-  const g=ctx.createRadialGradient(
-    canvas.width/2,canvas.height/2,0,
-    canvas.width/2,canvas.height/2,canvas.width
-  );
-  g.addColorStop(0,`rgba(255,230,160,${flash/60})`);
-  g.addColorStop(1,"rgba(255,230,160,0)");
-  ctx.fillStyle=g;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-}
-
 // ✨ 標題
 function drawTitle(){
-  if(!showTitle) return;
+  if(!showTitle || !fontReady) return;
   ctx.font="96px 'Great Vibes'";
   ctx.textAlign="center";
   ctx.fillStyle="rgba(255,215,160,0.9)";
@@ -323,26 +284,23 @@ function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawSnow();
   drawGift();
-  drawFlash();
   drawBunny();
   drawHearts();
 
-  const now = performance.now();
-
+  const now=performance.now();
   if(!showBunny && bunnyEndTime && now-bunnyEndTime>800){
-    showTitle = true;
-    if(!titleTime) titleTime = now;
+    showTitle=true;
+    if(!titleTime) titleTime=now;
   }
-
   if(showTitle && !showFireworks && now-titleTime>1000){
-    showFireworks = true;
-    showFinger = true;
+    showFireworks=true;
+    showHint=true;
   }
 
   drawFireworks();
   drawTitle();
   drawMessage();
-  drawFinger();
+  drawHint();
 
   requestAnimationFrame(loop);
 }
