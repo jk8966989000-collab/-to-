@@ -32,6 +32,13 @@ function resize(){
 resize();
 addEventListener("resize", resize);
 
+/* 字型是否已就緒 */
+let fontsReady = false;
+document.fonts.ready.then(()=>fontsReady=true);
+
+/* frame */
+let frame = 0;
+
 /* ❄ 雪 */
 const snow = Array.from({length:120},()=>({
   x:Math.random()*canvas.width,
@@ -41,24 +48,14 @@ const snow = Array.from({length:120},()=>({
 }));
 
 /* 狀態 */
-let stage = 0; 
-// 0: 等待第一次點擊
-// 1: 打開禮物
-// 2: 兔子
-// 3: 英文
-// 4: 煙火
-// 5: 等待第二次點擊
-// 6: 中文書寫
-
+let stage = 0;
 let flash = 0;
 let timer = 0;
 
 /* 粒子 */
-const sparkles = [];
 const fireworks = [];
-const hearts = [];
 
-/* 中文文字 */
+/* 中文 */
 const lines = [
   "九千：",
   "這是我和妳一起過的",
@@ -70,114 +67,32 @@ const lines = [
   "",
   "to.羊羊（2025/12/25）"
 ];
-let textLine = 0;
-let textChar = 0;
+let lineIndex = 0;
+let charIndex = 0;
 
 /* 點擊 */
 canvas.onclick = () => {
   if(stage === 0){
     stage = 1;
     flash = 60;
-    for(let i=0;i<260;i++){
-      sparkles.push({
-        x:canvas.width/2,
-        y:canvas.height/2,
-        vx:Math.cos(Math.random()*Math.PI*2)*(4+Math.random()*6),
-        vy:Math.sin(Math.random()*Math.PI*2)*(4+Math.random()*6),
-        life:60
-      });
-    }
     setTimeout(()=>stage=2,1200);
     return;
   }
-
   if(stage === 5){
     stage = 6;
   }
 };
 
-/* 🎁 禮物 */
-function drawGift(){
-  if(stage !== 0) return;
-  const s=Math.min(canvas.width,canvas.height)*0.45;
-  const x=canvas.width/2-s/2;
-  const y=canvas.height/2-s/2;
-  ctx.fillStyle="#c62828";
-  ctx.fillRect(x,y,s,s);
-  ctx.fillStyle="#ffd54f";
-  ctx.fillRect(x+s/2-18,y,36,s);
-  ctx.fillRect(x,y+s/2-18,s,36);
-}
-
-/* 🐰 兔子 */
-function drawBunny(){
-  if(stage !== 2) return;
-  const x=canvas.width/2;
-  const y=canvas.height/2+80;
-  const r=Math.min(canvas.width,canvas.height)*0.22;
-
-  ctx.fillStyle="#fff";
-  ctx.beginPath();
-  ctx.arc(x,y,r,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.ellipse(x-r/2.5,y-r*1.3,r/4,r/1.2,0,0,Math.PI*2);
-  ctx.ellipse(x+r/2.5,y-r*1.3,r/4,r/1.2,0,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle="#ffb6c1";
-  ctx.beginPath();
-  ctx.arc(x-r/6,y-r/12,r/16,0,Math.PI*2);
-  ctx.arc(x+r/6,y-r/12,r/16,0,Math.PI*2);
-  ctx.fill();
-
-  if(Math.random()<0.08){
-    hearts.push({
-      x:x+r*0.45,
-      y:y-r*1.4,
-      vy:-1,
-      life:80,
-      scale:1
-    });
-  }
-
-  timer++;
-  if(timer>180){
-    stage = 3;
-    timer = 0;
-  }
-}
-
-/* 💖 愛心 */
-function drawHearts(){
-  hearts.forEach(h=>{
-    h.y+=h.vy;
-    h.life--;
-    h.scale+=0.003;
-    ctx.save();
-    ctx.translate(h.x,h.y);
-    ctx.scale(h.scale,h.scale);
-    ctx.fillStyle=`rgba(255,140,170,${h.life/80})`;
-    ctx.beginPath();
-    ctx.arc(-6,-2,6,0,Math.PI*2);
-    ctx.arc(6,-2,6,0,Math.PI*2);
-    ctx.lineTo(0,12);
-    ctx.fill();
-    ctx.restore();
-  });
-}
-
-/* 🎆 煙火 */
+/* 🎆 正常煙火（穩定版） */
 function spawnFirework(){
-  const x=Math.random()*canvas.width;
-  const y=Math.random()*canvas.height*0.6;
+  const x = Math.random()*canvas.width;
+  const y = Math.random()*canvas.height*0.55;
   const colors=["#ffd700","#ff6ec7","#7afcff","#b388ff","#fff176"];
-  for(let i=0;i<80;i++){
+  for(let i=0;i<70;i++){
     fireworks.push({
       x,y,
-      vx:Math.cos(Math.random()*Math.PI*2)*(2+Math.random()*4),
-      vy:Math.sin(Math.random()*Math.PI*2)*(2+Math.random()*4),
+      vx:Math.cos(i/70*Math.PI*2)*(2+Math.random()*2),
+      vy:Math.sin(i/70*Math.PI*2)*(2+Math.random()*2),
       life:80,
       color:colors[Math.floor(Math.random()*colors.length)]
     });
@@ -185,8 +100,9 @@ function spawnFirework(){
 }
 
 function drawFireworks(){
-  if(stage < 4) return;
-  if(Math.random()<0.08) spawnFirework();
+  if(stage >= 4 && frame % 45 === 0){
+    spawnFirework();
+  }
   fireworks.forEach(f=>{
     f.x+=f.vx;
     f.y+=f.vy;
@@ -200,31 +116,34 @@ function drawFireworks(){
   });
 }
 
-/* ✍️ 中文 */
+/* ✍️ 中文（每 7 frame 一字） */
 function drawText(){
   if(stage !== 6) return;
   ctx.font="64px serif";
   ctx.textAlign="center";
   ctx.fillStyle="rgba(255,215,150,0.95)";
   let y = canvas.height/2 - 200;
-  for(let i=0;i<textLine;i++){
+
+  for(let i=0;i<lineIndex;i++){
     ctx.fillText(lines[i],canvas.width/2,y);
     y+=72;
   }
-  if(textLine<lines.length){
-    if(textChar < lines[textLine].length){
-      textChar+=0.5;
-    }else{
-      textLine++;
-      textChar=0;
+
+  if(lineIndex < lines.length){
+    if(frame % 7 === 0){
+      charIndex++;
+      if(charIndex > lines[lineIndex].length){
+        lineIndex++;
+        charIndex = 0;
+      }
     }
-    ctx.fillText(lines[textLine].slice(0,Math.floor(textChar)),canvas.width/2,y);
+    ctx.fillText(lines[lineIndex].slice(0,charIndex),canvas.width/2,y);
   }
 }
 
-/* ✨ 標題 */
+/* ✨ 標題（只在字型 ready 後畫） */
 function drawTitle(){
-  if(stage < 3) return;
+  if(stage < 3 || !fontsReady) return;
   ctx.font="96px 'Great Vibes'";
   ctx.textAlign="center";
   ctx.fillStyle="rgba(255,215,160,0.9)";
@@ -241,24 +160,7 @@ function drawTitle(){
   }
 }
 
-/* ☝️ 點擊提示 */
-function drawHint(x,y){
-  ctx.strokeStyle="rgba(255,255,255,0.8)";
-  ctx.lineWidth=4;
-  ctx.beginPath();
-  ctx.arc(x,y,40,0,Math.PI*2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x,y-50);
-  ctx.lineTo(x,y-20);
-  ctx.stroke();
-  ctx.font="36px sans-serif";
-  ctx.fillStyle="rgba(255,255,255,0.85)";
-  ctx.textAlign="center";
-  ctx.fillText("點擊螢幕",x,y-80);
-}
-
-/* ❄ */
+/* ❄ 雪 */
 function drawSnow(){
   ctx.fillStyle="#fff";
   snow.forEach(s=>{
@@ -270,39 +172,14 @@ function drawSnow(){
   });
 }
 
-/* ✨ 金光 */
-function drawFlash(){
-  if(flash<=0) return;
-  flash--;
-  const g=ctx.createRadialGradient(
-    canvas.width/2,canvas.height/2,0,
-    canvas.width/2,canvas.height/2,canvas.width
-  );
-  g.addColorStop(0,`rgba(255,230,160,${flash/60})`);
-  g.addColorStop(1,"rgba(255,230,160,0)");
-  ctx.fillStyle=g;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-}
-
 /* 主迴圈 */
 function loop(){
+  frame++;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawSnow();
-  drawGift();
-  drawFlash();
-  drawBunny();
-  drawHearts();
   drawTitle();
   drawFireworks();
   drawText();
-
-  if(stage===0){
-    drawHint(canvas.width/2+160,canvas.height/2+160);
-  }
-  if(stage===5){
-    drawHint(canvas.width/2,canvas.height/2+120);
-  }
-
   requestAnimationFrame(loop);
 }
 loop();
